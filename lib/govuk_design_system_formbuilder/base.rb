@@ -54,7 +54,19 @@ module GOVUKDesignSystemFormBuilder
     def has_errors?
       @builder.object.respond_to?(:errors) &&
         @builder.object.errors.any? &&
-        @builder.object.errors.messages[@attribute_name].present?
+        object_error_messages(@builder.object).present?
+    end
+
+    # @return Array[String] Error messages for object
+    def object_error_messages(object)
+      attributes = [@attribute_name]
+      if object.class.respond_to?(:reflect_on_all_associations) && @attribute_name.to_s.end_with?("_id")
+        # if this attribute is an id for a belongs_to association, include errors from the association (strip the _id)
+        association_name = @attribute_name.to_s.delete_suffix("_id").to_sym
+        belongs_to = object.class.reflect_on_all_associations(:belongs_to).map(&:name)
+        attributes << association_name if belongs_to.include?(association_name)
+      end
+      attributes.flat_map { |i| object.errors.messages[i] }
     end
 
     def combine_references(*ids)
